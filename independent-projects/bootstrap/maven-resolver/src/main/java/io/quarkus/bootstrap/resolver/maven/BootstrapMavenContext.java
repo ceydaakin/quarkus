@@ -364,7 +364,8 @@ public class BootstrapMavenContext {
                             throw new BootstrapMavenException("Settings problem encountered at " + problem.getLocation(),
                                     problem.getException());
                         default:
-                            log.warn("Settings problem encountered at " + problem.getLocation(), problem.getException());
+                            log.warn("Settings problem encountered at " + problem.getLocation() + ": " + problem.getMessage());
+                            log.debug("Settings problem encountered at " + problem.getLocation(), problem.getException());
                     }
                 }
             }
