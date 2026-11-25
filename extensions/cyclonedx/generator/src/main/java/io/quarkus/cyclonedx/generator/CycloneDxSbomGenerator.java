@@ -476,8 +476,10 @@ public class CycloneDxSbomGenerator {
     private void renderMainComponent(Bom bom, ComponentDescriptor descriptor) {
         Component c = renderComponentCore(descriptor);
         c.setType(Component.Type.APPLICATION);
+        // The main component is declared only in metadata.component: CycloneDX requires every
+        // bom-ref to be unique within the BOM, so it must not be repeated in components.
+        // The dependency graph still references it by its bom-ref.
         bom.getMetadata().setComponent(c);
-        bom.addComponent(c);
     }
 
     /**
@@ -494,9 +496,6 @@ public class CycloneDxSbomGenerator {
      * cannot be resolved, this method is a no-op.
      */
     private void applyProjectLicenseToFiles(Bom bom) {
-        if (bom.getComponents() == null) {
-            return;
-        }
         LicenseChoice projectLicenses = resolveProjectLicenses(bom);
         if (projectLicenses == null) {
             return;
@@ -504,6 +503,9 @@ public class CycloneDxSbomGenerator {
         Component main = bom.getMetadata() != null ? bom.getMetadata().getComponent() : null;
         if (main != null && !hasLicenses(main)) {
             main.setLicenses(projectLicenses);
+        }
+        if (bom.getComponents() == null) {
+            return;
         }
         for (Component c : bom.getComponents()) {
             if (c.getType() == Component.Type.FILE && !hasLicenses(c)) {

@@ -394,8 +394,9 @@ class CycloneDxSbomGeneratorTest {
                 .map(Component::getName)
                 .toList();
 
-        // Library and main components should be present
-        assertThat(componentNames).contains("react", "quarkus-rest", "acme-app");
+        // Library components should be present, and the main component should be kept in the metadata
+        assertThat(componentNames).contains("react", "quarkus-rest");
+        assertThat(bom.getMetadata().getComponent().getName()).isEqualTo("acme-app");
         // File components should be excluded
         assertThat(componentNames).doesNotContain("quarkus-run.jar", "app-data.dat");
 
@@ -686,6 +687,39 @@ class CycloneDxSbomGeneratorTest {
         assertThat(main.getLicenses()).isNotNull();
         assertThat(main.getLicenses().getLicenses())
                 .anyMatch(l -> "Apache-2.0".equals(l.getId()));
+    }
+
+    @Test
+    void mainComponentIsNotDuplicatedInComponents() {
+        // CycloneDX requires every bom-ref to be unique within the BOM, so the application
+        // must be declared once, in metadata.component, and not repeated in components
+        ResolvedDependency mainArtifact = resolvedDep("org.acme", "acme-app", "1.0.0",
+                List.of(ArtifactCoords.jar("io.quarkus", "quarkus-rest", "3.0.0")));
+        ResolvedDependency restDep = resolvedDep("io.quarkus", "quarkus-rest", "3.0.0", List.of());
+
+        SbomContribution coreContribution = new CoreSbomContributionConfig()
+                .setMainArtifact(mainArtifact)
+                .addComponent(restDep)
+                .toSbomContribution();
+
+        Bom bom = parseBom(CycloneDxSbomGenerator.newInstance()
+                .setFormat("json")
+                .setContributions(List.of(coreContribution))
+                .generateText().get(0));
+
+        String mainBomRef = coreContribution.mainComponentBomRef();
+        assertThat(bom.getMetadata().getComponent().getBomRef()).isEqualTo(mainBomRef);
+        assertThat(bom.getComponents())
+                .extracting(Component::getBomRef)
+                .doesNotContain(mainBomRef)
+                .doesNotHaveDuplicates();
+        assertThat(bom.getComponents())
+                .extracting(Component::getName)
+                .contains("quarkus-rest");
+        // the dependency graph still references the main component
+        assertThat(bom.getDependencies())
+                .extracting(Dependency::getRef)
+                .contains(mainBomRef);
     }
 
     @Test
