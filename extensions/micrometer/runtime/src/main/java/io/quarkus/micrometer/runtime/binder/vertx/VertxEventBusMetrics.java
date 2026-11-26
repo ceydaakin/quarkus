@@ -66,17 +66,23 @@ public class VertxEventBusMetrics implements EventBusMetrics<VertxEventBusMetric
             // Ignore internal metrics
             return ignored;
         }
-        return handlers.computeIfAbsent(address, a -> new Handler(address))
-                .increment();
+        return handlers.compute(address, (a, h) -> (h == null ? new Handler(a) : h).increment());
 
     }
 
     @Override
     public void handlerUnregistered(Handler handler) {
         if (isValid(handler)) {
-            if (handlers.get(handler.address).decrement()) {
-                handlers.remove(handler.address);
-            }
+            // compute is atomic per address: a concurrent handlerRegistered either reuses this Handler
+            // before it is removed, or creates new gauges once it is gone
+            handlers.computeIfPresent(handler.address, (a, h) -> {
+                if (h.decrement()) {
+                    // last handler for this address, so drop its gauges (transient addresses would leak them)
+                    h.removeGauges();
+                    return null;
+                }
+                return h;
+            });
         }
     }
 
@@ -184,6 +190,13 @@ public class VertxEventBusMetrics implements EventBusMetrics<VertxEventBusMetric
         public boolean decrement() {
             count.decrement();
             return count.longValue() == 0;
+        }
+
+        void removeGauges() {
+            Tags addressTags = tags.and("address", address);
+            gauges.remove(registry, "eventBus.handlers", addressTags);
+            gauges.remove(registry, "eventBus.delivered", addressTags);
+            gauges.remove(registry, "eventBus.discarded", addressTags);
         }
 
         public void delivered() {

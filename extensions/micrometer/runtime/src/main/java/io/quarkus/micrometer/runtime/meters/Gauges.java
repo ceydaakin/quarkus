@@ -8,6 +8,8 @@ import java.util.function.Supplier;
 import java.util.function.ToDoubleFunction;
 
 import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 
 public class Gauges<T> {
 
@@ -33,5 +35,16 @@ public class Gauges<T> {
 
     public GaugeBuilder<T> builder(String name, ToDoubleFunction<T> func) {
         return new GaugeBuilder<>(name, map, factory, func);
+    }
+
+    /**
+     * Removes a gauge registered by this instance from the registry and drops its value,
+     * so registering the same name and tags again starts from a fresh value.
+     */
+    public void remove(MeterRegistry registry, String name, Tags tags) {
+        Meter removed = registry.removeByPreFilterId(new Meter.Id(name, tags, null, null, Meter.Type.GAUGE));
+        if (removed != null) {
+            map.remove(removed.getId());
+        }
     }
 }
