@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import org.eclipse.microprofile.config.ConfigProvider;
+
 import io.quarkus.runtime.configuration.ConfigurationException;
 
 public final class DataSourceUtil {
@@ -36,6 +38,45 @@ public final class DataSourceUtil {
                     "quarkus.datasource.\"" + datasourceName + "\"." + radical,
                     "quarkus.datasource." + datasourceName + "." + radical);
         }
+    }
+
+    /**
+     * Returns the keys to use when setting a datasource property on the user's behalf (e.g. from Dev Services).
+     * <p>
+     * Setting both the quoted and the unquoted spelling of a named datasource while the user only uses one of them
+     * makes SmallRye Config warn about ambiguous map keys (SRCFG01009),
+     * so this returns only the spelling the user uses for this datasource,
+     * and both spellings if the user uses neither or both.
+     *
+     * @param configuredPropertyNames the names of the properties the user configured
+     */
+    public static List<String> dataSourcePropertyKeysMatchingConfig(String datasourceName, String radical,
+            Iterable<String> configuredPropertyNames) {
+        List<String> keys = dataSourcePropertyKeys(datasourceName, radical);
+        if (keys.size() == 1) {
+            return keys;
+        }
+        String quotedPrefix = "quarkus.datasource.\"" + datasourceName + "\".";
+        String unquotedPrefix = "quarkus.datasource." + datasourceName + ".";
+        boolean quotedUsed = false;
+        boolean unquotedUsed = false;
+        for (String propertyName : configuredPropertyNames) {
+            quotedUsed |= propertyName.startsWith(quotedPrefix);
+            unquotedUsed |= propertyName.startsWith(unquotedPrefix);
+        }
+        if (quotedUsed == unquotedUsed) {
+            return keys;
+        }
+        return List.of(quotedUsed ? keys.get(0) : keys.get(1));
+    }
+
+    /**
+     * Same as {@link #dataSourcePropertyKeysMatchingConfig(String, String, Iterable)},
+     * looking at the property names of the current configuration.
+     */
+    public static List<String> dataSourcePropertyKeysMatchingConfig(String datasourceName, String radical) {
+        return dataSourcePropertyKeysMatchingConfig(datasourceName, radical,
+                ConfigProvider.getConfig().getPropertyNames());
     }
 
     public static ConfigurationException dataSourceNotConfigured(String dataSourceName) {

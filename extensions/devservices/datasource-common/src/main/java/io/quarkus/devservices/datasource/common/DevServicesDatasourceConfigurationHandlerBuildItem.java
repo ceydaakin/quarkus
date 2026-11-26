@@ -63,7 +63,7 @@ public final class DevServicesDatasourceConfigurationHandlerBuildItem extends Mu
     public static DevServicesDatasourceConfigurationHandlerBuildItem jdbc(String dbKind) {
         return new DevServicesDatasourceConfigurationHandlerBuildItem(dbKind, jdbcProviderFunction(), (dsName) -> {
             Function<DatasourceStartable, String> function = s -> s.runningDevServicesDatasource().jdbcUrl();
-            return fromKeys(datasourceURLPropNames(dsName), function);
+            return fromKeys(DataSourceUtil.dataSourcePropertyKeysMatchingConfig(dsName, "jdbc.url"), function);
         },
                 new Predicate<>() {
                     @Override
@@ -80,7 +80,7 @@ public final class DevServicesDatasourceConfigurationHandlerBuildItem extends Mu
             public Map<String, String> apply(String dsName,
                     DevServicesDatasourceProvider.RunningDevServicesDatasource runningDevDb) {
                 String url = runningDevDb.jdbcUrl();
-                return fromKeys(datasourceURLPropNames(dsName), url);
+                return fromKeys(DataSourceUtil.dataSourcePropertyKeysMatchingConfig(dsName, "jdbc.url"), url);
             }
 
         };
@@ -92,7 +92,7 @@ public final class DevServicesDatasourceConfigurationHandlerBuildItem extends Mu
             public Map<String, String> apply(String dsName,
                     DevServicesDatasourceProvider.RunningDevServicesDatasource runningDevDb) {
                 String url = runningDevDb.reactiveUrl();
-                return fromKeys(datasourceReactiveURLPropNames(dsName), url);
+                return fromKeys(DataSourceUtil.dataSourcePropertyKeysMatchingConfig(dsName, "reactive.url"), url);
             }
         };
     }
@@ -110,7 +110,7 @@ public final class DevServicesDatasourceConfigurationHandlerBuildItem extends Mu
                 (dsName) -> {
                     Function<DatasourceStartable, String> reactiveUrl = s -> s.runningDevServicesDatasource().reactiveUrl();
 
-                    return fromKeys(datasourceReactiveURLPropNames(dsName), reactiveUrl);
+                    return fromKeys(DataSourceUtil.dataSourcePropertyKeysMatchingConfig(dsName, "reactive.url"), reactiveUrl);
                 }, new Predicate<>() {
                     @Override
                     public boolean test(String dsName) {

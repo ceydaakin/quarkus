@@ -434,7 +434,7 @@ public class DevServicesDatasourceProcessor {
 
     private void setDataSourceProperties(Map<String, String> propertiesMap, String dbName, String propertyKeyRadical,
             String value) {
-        for (String key : DataSourceUtil.dataSourcePropertyKeys(dbName, propertyKeyRadical)) {
+        for (String key : DataSourceUtil.dataSourcePropertyKeysMatchingConfig(dbName, propertyKeyRadical)) {
             propertiesMap.put(key, value);
         }
     }
